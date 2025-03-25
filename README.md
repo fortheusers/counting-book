@@ -1,7 +1,7 @@
 ## counting-book
 This service merges in HBAS download counts from non-CDN repos with the CDN repos, and creates summaries and total counts for the HBAS repos.
 
-It does not actually download any log file data, and expects them to be set up in advance.
+It also has helper scripts to download and upload these counts to/from the servers.
 
 Specifically, it creates these two files:
 - https://wiiubru.com/history/totals_Switch.json
