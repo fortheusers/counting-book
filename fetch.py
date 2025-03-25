@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # run this script before count.py, to download the dependencies
 
-import os, json, ftplib, json
+import os, json, ftplib, json, datetime
 
 # credentials from config.json
 loaded = False
@@ -61,6 +61,12 @@ for platform in ls(ftp2):
                 # if we have an existing file, check the size of the file first
                 # if it's the same, skip
                 if os.path.exists(localPath):
+                    # also, if the expected date of this file is more htan a week ago, skip it regardless
+                    date = f"{year}-{month}-{file.split('_')[0]}"
+                    date = datetime.datetime.strptime(date, "%Y-%m-%d")
+                    if date < datetime.datetime.now() - datetime.timedelta(days=7):
+                        print(f"Skipped {localPath} (too old)")
+                        continue
                     ftp2.sendcmd(f"TYPE I")
                     remoteSize = ftp2.size(file)
                     if os.path.getsize(localPath) == remoteSize:

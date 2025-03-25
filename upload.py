@@ -33,7 +33,8 @@ for platform in ["Switch", "WiiU"]:
     # upload each package json
     ftp1.cwd(f"/history/output_{platform}") # assume it exists already
     for package in os.listdir(f"output_{platform}"):
-        if package.endswith(".json"):
+        if package.endswith(".json") and package != "config.json": # just in case
             with open(f"output_{platform}/{package}", "rb") as file:
                 ftp1.storbinary(f"STOR {package}", file)
                 print("Uploaded", package)
+    ftp1.cwd("/history") # go back to the root

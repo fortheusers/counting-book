@@ -1,0 +1,6 @@
+config.json
+pullzone-logs*
+output.json
+totals_*.json
+output_*
+*.DS_Store
