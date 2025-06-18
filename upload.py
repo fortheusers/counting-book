@@ -32,9 +32,17 @@ for platform in ["Switch", "WiiU"]:
         print("Uploaded", f"totals_{platform}.json")
     # upload each package json
     ftp1.cwd(f"/history/output_{platform}") # assume it exists already
-    for package in os.listdir(f"output_{platform}"):
+    filesToUpload = os.listdir(f"output_{platform}")
+    print("Files to upload:", filesToUpload)
+    totalFilesCount = len(filesToUpload)
+    count = 0
+    for package in filesToUpload:
         if package.endswith(".json") and package != "config.json": # just in case
             with open(f"output_{platform}/{package}", "rb") as file:
                 ftp1.storbinary(f"STOR {package}", file)
-                print("Uploaded", package)
+                print(f"Uploaded {package} ({count + 1}/{totalFilesCount})")
+                count += 1
     ftp1.cwd("/history") # go back to the root
+
+ftp1.quit()
+print("All files uploaded successfully.")

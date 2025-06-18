@@ -19,54 +19,61 @@ for platform in platforms:
 
     # for each gz file, process the log lines for each zip file HIT
     folder = f"pullzone-logs/hbas-{platform.lower()}"
-    for path, dirs, files in os.walk(folder):
-        for file in files:
-            if file.endswith(".gzip"):
-                # if we already have a summary, load it and use it
-                if os.path.exists(f"{path}/{file}_summary.json"):
-                    with open(f"{path}/{file}_summary.json", "r") as f:
-                        countSummary = json.load(f)
-                        for package in countSummary:
-                            dailyCounts[package] += Counter(countSummary[package])
-                        print(f"Loaded {file}_summary.json")
-                    continue
-                # same as our dailyCounts, but for this specific file
-                countSummary = defaultdict(lambda: Counter())
-                with gzip.open(os.path.join(path, file), "rt") as f:
-                    for line in f:
-                        line = line.strip().split("|")
-                        # skip if it's not a HIT
-                        if line[0] != "HIT":
-                            continue
-                        # skip if it's not a 200 response
-                        if line[1] != "200":
-                            continue
+    folders = [folder]
+    # if we're on switch, we also need to sum up any hits from the secondary repo
+    if platform == "Switch":
+        folders.append(f"pullzone-logs/secondary-hbas-switch")
+        folders.append(f"pullzone-logs/switch-hbas-repo")
+    for folder in folders:
+        # because it's a chain of two CDNs
+        for path, dirs, files in os.walk(folder):
+            for file in files:
+                if file.endswith(".gzip"):
+                    # if we already have a summary, load it and use it
+                    if os.path.exists(f"{path}/{file}_summary.json"):
+                        with open(f"{path}/{file}_summary.json", "r") as f:
+                            countSummary = json.load(f)
+                            for package in countSummary:
+                                dailyCounts[package] += Counter(countSummary[package])
+                            print(f"Loaded {file}_summary.json")
+                        continue
+                    # same as our dailyCounts, but for this specific file
+                    countSummary = defaultdict(lambda: Counter())
+                    with gzip.open(os.path.join(path, file), "rt") as f:
+                        for line in f:
+                            line = line.strip().split("|")
+                            # skip if it's not a HIT
+                            if line[0] != "HIT":
+                                continue
+                            # skip if it's not a 200 response
+                            if line[1] != "200":
+                                continue
 
-                        timestamp = line[2]
-                        remote_file = os.path.basename(line[7])
-                        user_agent = line[9]
+                            timestamp = line[2]
+                            remote_file = os.path.basename(line[7])
+                            user_agent = line[9]
 
-                        # skip if not zip
-                        if not remote_file.endswith(".zip"):
-                            continue
-                        remote_file = remote_file[:-4] # remove .zip
+                            # skip if not zip
+                            if not remote_file.endswith(".zip"):
+                                continue
+                            remote_file = remote_file[:-4] # remove .zip
+                                
+                            isConsole = user_agent == "-" or user_agent.startswith("HBAS/")
+
+                            # convert timestamp from unix string to dd/MMM/yyyy string
+                            timestamp = int(timestamp) // 1000
+                            timestamp = datetime.datetime.utcfromtimestamp(timestamp).strftime("%d/%b/%Y")
                             
-                        isConsole = user_agent == "-" or user_agent.startswith("HBAS/")
+                            # now merge these counts with our existing counts
+                            countSummary[remote_file][timestamp] += 1
 
-                        # convert timestamp from unix string to dd/MMM/yyyy string
-                        timestamp = int(timestamp) // 1000
-                        timestamp = datetime.datetime.utcfromtimestamp(timestamp).strftime("%d/%b/%Y")
-                        
-                        # now merge these counts with our existing counts
-                        countSummary[remote_file][timestamp] += 1
-
-                # write this out as a cache for next time
-                with open(f"{path}/{file}_summary.json", "w") as f:
-                    json.dump(countSummary, f, indent=4)
-                # merge these counts with our dailyCounts
-                for package in countSummary:
-                    dailyCounts[package] += countSummary[package]
-                print(f"Processed {file}, saved {file}_summary.json")
+                    # write this out as a cache for next time
+                    with open(f"{path}/{file}_summary.json", "w") as f:
+                        json.dump(countSummary, f, indent=4)
+                    # merge these counts with our dailyCounts
+                    for package in countSummary:
+                        dailyCounts[package] += countSummary[package]
+                    print(f"Processed {file}, saved {file}_summary.json")
 
     # save the final updated counts
     with open("output2.json", "w") as file:
